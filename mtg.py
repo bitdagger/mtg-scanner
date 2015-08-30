@@ -6,22 +6,52 @@ import math
 import json
 import sys
 import phash
+import operator
+import pprint
 
-def detect_card(img):
+def detect_card(img, threshold=10):
     cv2.imwrite('frame.jpg', img)
     with open('hashes.json') as data_file:    
         hashes = json.load(data_file)
     ihash = phash.dct_imagehash('frame.jpg')
-    d = 99
-    m = 0
+
+    candidates = {}
 
     for mid in hashes:
         dist = phash.hamming_distance(ihash,hashes[mid])
-        if (dist < d):
-            d = dist
-            m = mid
-                
-    print m, d
+        if (dist > threshold):
+            continue # Ignore large values
+        candidates[mid] = dist
+
+    minv = min(candidates.iteritems(), key=operator.itemgetter(1))[0]
+    finalists = {}
+    for mid in candidates:
+        if candidates[mid] == candidates[minv]:
+            finalists[mid] = candidates[mid]
+
+    if (len(finalists) <= 1):
+        multiverseID, distance = finalists.popitem()
+    else:
+        digests = {}
+        for mid in finalists:
+            fname = 'img/' + str(mid) + '.jpg'
+            idigest = phash.image_digest('frame.jpg')
+            idigest2 = phash.image_digest(fname)
+            digests[mid] = phash.cross_correlation(idigest, idigest2)
+            
+        minv = min(digests.iteritems(), key=operator.itemgetter(1))[0]
+        tiebreaker = {}
+        for mid in digests:
+            if digests[mid] == digests[minv]:
+                tiebreaker[mid] = digests[mid]
+
+        if (len(tiebreaker) <= 1):
+            multiverseID, distance = tiebreaker.popitem()
+        else:
+            multiverseID = -1
+            distance = -1
+    
+    print multiverseID, distance
 
 def apply_rotation(img, width, height):
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
