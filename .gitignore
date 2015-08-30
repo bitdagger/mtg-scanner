@@ -1,0 +1,19 @@
+# Ignore hidden files
+.*
+
+# Exceptions to above
+!.gitignore
+!.gitkeep
+
+# Ignore temporary files
+*~
+
+# Annoying Windows files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Ignore the generated stuff
+hashes.json
+img/
