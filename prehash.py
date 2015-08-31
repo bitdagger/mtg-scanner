@@ -6,7 +6,7 @@ import numpy as np
 import sys
 import phash
 
-sets = ["ALA", "ARB", "AVR", "BNG", "CON", "DGM", "DKA", "DTK", "FRF", "GTC", "ISD", "JOU", "KTK", "M10", "M11", "M12", "M13", "M14", "M15", "MBS", "NPH", "ORI", "ROE", "RTR", "SOM", "THS", "WWK", "ZEN"]
+sets = ["ALA"]#, "ARB", "AVR", "BNG", "CON", "DGM", "DKA", "DTK", "FRF", "GTC", "ISD", "JOU", "KTK", "M10", "M11", "M12", "M13", "M14", "M15", "MBS", "NPH", "ORI", "ROE", "RTR", "SOM", "THS", "WWK", "ZEN"]
 
 hashes = {}
 

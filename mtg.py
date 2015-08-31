@@ -23,12 +23,14 @@ def detect_card(img):
                 
     print m, d
 
-def apply_rotation(img, width, height):
+def apply_rotation(img):
+    debug = img.copy()
+    width, height, channels = img.shape;
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     edges = cv2.Canny(gray, 100, 300)
     lines = cv2.HoughLines(edges,1,np.pi/180,120)
-    if (lines is None):
-        return img
+    if (lines is None or height == 0 or width == 0):
+        return (img, edges)
 
     r = 0
     n = 0
@@ -37,17 +39,34 @@ def apply_rotation(img, width, height):
         if (abs(t) < 90):
             r += t
             n += 1
+        #Draw lines onto image
+        print("drawing a line")
+        a = np.cos(theta)
+        b = np.sin(theta)
+        x0 = a*rho
+        y0 = b*rho
+        x1 = int(x0 + 1000*(-b))
+        y1 = int(y0 + 1000*(a))
+        x2 = int(x0 - 1000*(-b))
+        y2 = int(y0 - 1000*(a))
+        cv2.line(img, (x1,y1),(x2,y2),(0,0,255),2)
+
+    if (n==0):
+        return (img, edges)
 
     M = cv2.getRotationMatrix2D( (width/2,height/2), (r / n), 1)
-    return cv2.warpAffine(img, M, (width,height))
+    return (cv2.warpAffine(img, M, (width,height)), edges)
 
-def autocrop(img, width, height):
+def autocrop(img):
+    debug = img.copy()
+    width, height, channels = img.shape;
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     ret,thresh = cv2.threshold(gray,127,255,0)
     contours,hierarchy = cv2.findContours(thresh, 1, 2)
+    cv2.drawContours(debug, contours, -1, (0,255,0), 3)
     maxArea = 0
     imgArea = width * height
-    x,y,w,h = [0,0,0,0]
+    x,y,w,h = [0,0,width,height]
     for cnt in contours:
         x0,y0,w0,h0 = cv2.boundingRect(cnt)
         area = w0*h0
@@ -55,24 +74,37 @@ def autocrop(img, width, height):
             maxArea = area
             x,y,w,h = x0,y0,w0,h0
 
-    return img[y:y+h, x:x+w]
+    return (img[y:y+h, x:x+w], debug)
 
 cap = cv2.VideoCapture(0)
 
 doApplyTransforms = False
 doLoop = True
+
+#debug
+debugRotation = False
+debugCrop = False
+
 while(doLoop):
     ret, frame = cap.read()
     height, width, channels = frame.shape
 
     # Rotate 180 degrees because our camera is backwards
-    M = cv2.getRotationMatrix2D( (width/2,height/2), 180, 1)
-    frame = cv2.warpAffine(frame, M, (width,height))
-
+    #M = cv2.getRotationMatrix2D( (width/2,height/2), 180, 1)
+    #frame = cv2.warpAffine(frame, M, (width,height))
 
     if (doApplyTransforms):
-        frame = apply_rotation(frame, width, height)
-        frame = autocrop(frame, width, height)
+        #Do auto-crop first so that rotator doesn't have to work as hard
+        frame, debug_crop = autocrop(frame)
+        #Do affine correction as well as rotation
+        frame, debug_rot  = apply_rotation(frame)
+
+        if (debugRotation):
+            cv2.imshow('rotation', debug_rot)
+            key = cv2.waitKey(1)
+        if (debugCrop):
+            cv2.imshow('crop', debug_crop)
+            key = cv2.waitKey(1)
 
     cv2.imshow('frame', frame)
 
@@ -80,6 +112,10 @@ while(doLoop):
 
     if (key == ord('e')):
         doApplyTransforms = not doApplyTransforms
+    elif (key == ord('r')):
+        debugRotation = not debugRotation
+    elif (key == ord('c')):
+        debugCrop = not debugCrop
     elif (key == 10):
         if (not doApplyTransforms):
             doApplyTransforms = True
