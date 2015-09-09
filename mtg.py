@@ -8,6 +8,7 @@ import sys
 import phash
 import operator
 import signal
+import base64
 
 """MTG Scanner
 
@@ -51,7 +52,7 @@ class MTG_Scanner:
             try:
                 frame = self.getFrame()
                 self.debugFrames = []
-            except Exception as msg: # TODO - Make our own exception class
+            except MTGException as msg:
                 print 'Error: ' + str(msg)
                 self.running = False
                 break
@@ -59,12 +60,12 @@ class MTG_Scanner:
             if (self.bApplyTransforms):
                 try:
                     frame = self.fitFrame(frame)
-                except Exception as msg:
+                except MTGException as msg:
                     print 'Error: ' + str(msg)
                     self.running = False
                     break
 
-            cv2.imshow('frame', frame)
+            cv2.imshow('Preview', frame)
 
             if (self.bDisplayDebug):
                 for debug in self.debugFrames:
@@ -82,7 +83,7 @@ class MTG_Scanner:
                 self.debugWindows = {}
 
             key = cv2.waitKey(1) & 0xFF
-            self.handleKey(key)
+            self.handleKey(key, frame)
 
 
         if (self.captureDevice is not None):
@@ -91,18 +92,107 @@ class MTG_Scanner:
         cv2.destroyAllWindows()
 
 
+    def detectCard(self, frame):
+        """Attempt to detect what card we have
+        """
+
+        # The phash python bindings operate on files, so we have to write our
+        # current frame to a file to continue
+        cv2.imwrite('frame.jpg', frame)
+
+        # Use phash on our frame
+        ihash = phash.dct_imagehash('frame.jpg')
+        idigest = phash.image_digest('frame.jpg')
+
+        candidates = []
+        with open('hashes.json') as data_file:
+            hashes = json.load(data_file)
+
+        ham_threshold = 10 # TODO - move this to a global option
+        for multiverseID in hashes:
+            hamd = phash.hamming_distance(ihash, hashes[multiverseID])
+            if (hamd <= ham_threshold):
+                candidates.append(multiverseID)
+
+        print candidates
+
+        bestMatch = None
+        correlations = {}
+        for multiverseID in candidates:
+            digest = phash.image_digest('img/' + str(multiverseID) + '.jpg')
+            corr = phash.cross_correlation(idigest, digest)
+            if (bestMatch is None or corr > correlations[bestMatch]):
+                bestMatch = multiverseID
+            correlations[multiverseID] = corr
+
+        print bestMatch
+
 
     def fitFrame(self, frame):
         """Attempts to isolate the card by finding the lines that define the 
         border, then cropping and rotating the image to fit
         """
 
+        min_horz, max_horz, min_vert, max_vert = self.findCardEdges(frame)
+
+        # Calculate the corner points
+        points = [
+            self.lineIntersect(min_horz[0], min_horz[1], min_vert[0], min_vert[1]), # Lower left
+            self.lineIntersect(min_horz[0], min_horz[1], max_vert[0], max_vert[1]), # Lower right
+            self.lineIntersect(max_horz[0], max_horz[1], min_vert[0], min_vert[1]), # Upper left
+            self.lineIntersect(max_horz[0], max_horz[1], max_vert[0], max_vert[1]), # Upper right
+        ]
+        (bl, br, tl, tr) = points
+
+        # Assemble debugging frame
+        debugFrame = frame.copy()
+        cv2.circle(debugFrame, bl, 10, (0, 0, 255), -1)
+        cv2.circle(debugFrame, br, 10, (0, 0, 255), -1)
+        cv2.circle(debugFrame, tl, 10, (0, 0, 255), -1)
+        cv2.circle(debugFrame, tr, 10, (0, 0, 255), -1)
+        self.debugFrames.append(['Corners', debugFrame])
+
+        # Find the max width and height
+        widthA = np.sqrt(((br[0] - bl[0]) ** 2) + ((br[1] - bl[1]) ** 2))
+        widthB = np.sqrt(((tr[0] - tl[0]) ** 2) + ((tr[1] - tl[1]) ** 2))
+        maxWidth = max(int(widthA), int(widthB))
+
+        heightA = np.sqrt(((tr[0] - br[0]) ** 2) + ((tr[1] - br[1]) ** 2))
+        heightB = np.sqrt(((tl[0] - bl[0]) ** 2) + ((tl[1] - bl[1]) ** 2))
+        maxHeight = max(int(heightA), int(heightB))
+
+        # Define our rectangles
+        dst = np.array([
+            [maxWidth - 1, 0],
+            [0, 0],
+            [maxWidth - 1, maxHeight - 1],
+            [0, maxHeight -1],
+        ], dtype = "float32")
+
+        src = np.array([bl, br, tl, tr], dtype = "float32")
+
+        M = cv2.getPerspectiveTransform(src, dst)
+        frame = cv2.warpPerspective(frame, M, (maxWidth, maxHeight))
+
+        self.debugFrames.append(['Fit', frame.copy()])
+
+        return frame
+
+    def findCardEdges(self, frame):
+        """Find the lines that make up the edges of the card
+        """
+
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         edges = cv2.Canny(gray, 100, 300)
         lines = cv2.HoughLines(edges, 1, np.pi/180, 120)
         if (lines is None):
-            self.log('No lines found')
-            return frame
+            raise MTGException('Missing framing lines')
+
+        # Assemble debugging frame
+        debugFrame = frame.copy()
+        for rho,theta in lines[0]:
+            self.drawLine(debugFrame, rho, theta, (0,0,255))
+        self.debugFrames.append(['Lines', debugFrame])
 
         # Find all the horizontal and vertical lines
         vert_lines = []
@@ -144,7 +234,7 @@ class MTG_Scanner:
             (max_horz[0] is None or max_horz[1] is None) or
             (min_vert[0] is None or min_vert[1] is None) or
             (max_vert[0] is None or max_vert[1] is None)):
-            raise Exception('Missing framing lines')
+            raise MTGException('Missing framing lines')
 
         # Assemble debugging frame
         debugFrame = frame.copy()
@@ -152,20 +242,21 @@ class MTG_Scanner:
         self.drawLine(debugFrame, max_horz[0], max_horz[1], (0,255,0))
         self.drawLine(debugFrame, min_vert[0], min_vert[1], (0,0,255))
         self.drawLine(debugFrame, max_vert[0], max_vert[1], (0,0,255))
-        self.debugFrames.append(['Card Framing', debugFrame])
+        self.debugFrames.append(['Framing', debugFrame])
 
-        ## TODO - Cropping. Maybe after rotation? Who knows!
+        return (min_horz, max_horz, min_vert, max_vert)
 
-        # Rotate the frame
-        width, height, channels = frame.shape
-        rotation = -1 * abs(90 - math.degrees((min_horz[1] + max_horz[1]) / 2))
-        M = cv2.getRotationMatrix2D( (width/2,height/2), rotation, 1)
-        frame = cv2.warpAffine(frame, M, (width,height))
 
-        # Assemble debugging frame
-        self.debugFrames.append(['Rotation', frame.copy()])
+    def lineIntersect(self, r1, t1, r2, t2):
+        """Find the intersection of two lines given their normal form
+        """
+        a1, b1 = math.cos(t1), math.sin(t1)
+        a2, b2 = math.cos(t2), math.sin(t2)
 
-        return frame
+        x = (b2*r1 - b1*r2) / (a1*b2 - a2*b1) # Algebra from  r = x*cos(t) + y*sin(t)
+        y = (r1 - x*a1) / b1
+
+        return (int(round(x, 0)), int(round(y, 0))) # Rounded because pixels
 
 
     def drawLine(self, frame, rho, theta, color):
@@ -188,14 +279,6 @@ class MTG_Scanner:
         cv2.line(frame, (x1,y1),(x2,y2),color,2)
 
 
-    def log(self, msg):
-        """Write a message to the console. Maybe enable a debugging check here 
-        at some point?
-        """
-
-        print msg
-
-
     def getFrame(self):
         """Get a single frame from the designated source
         """
@@ -203,11 +286,11 @@ class MTG_Scanner:
         if (self.SOURCE >= 0):  # Camera
             ret, frame = self.captureDevice.read()
             if (frame is None):
-                raise Exception('No frame read from camera')
+                raise MTGException('No frame read from camera')
         else:                   # Sample.jpg
             frame = self.referenceImg.copy()
             if (frame is None):
-                raise Exception('Failed to load sample image')
+                raise MTGException('Failed to load sample image')
 
         return frame
 
@@ -219,7 +302,7 @@ class MTG_Scanner:
         self.running = False
 
 
-    def handleKey(self, key):
+    def handleKey(self, key, frame):
         """Respond to keypresses. I miss switch statements.
         """
 
@@ -231,84 +314,18 @@ class MTG_Scanner:
             if (not self.bApplyTransforms):
                 self.bApplyTransforms = True
             else:
-                print 'Do Detection'
-                #detect_card(frame)
+                self.detectCard(frame)
                 self.bApplyTransforms = False
         elif (key == ord('q')):
             self.running = False
 
 
+class MTGException(Exception):
+    """Custom exception to use in our code so we don't catch random exceptions
+    """
+    pass
+
 # Program entry
 if __name__ == '__main__':
     app = MTG_Scanner()
     app.run()
-
-
-###############################################
-# OLD STUFF THAT STILL NEEDS TO BE IMPLEMENTED
-# Git lets us delete this, but I'm lazy
-###############################################
-
-
-def detect_card(img, threshold=10):
-    cv2.imwrite('frame.jpg', img)
-    with open('hashes.json') as data_file:    
-        hashes = json.load(data_file)
-    ihash = phash.dct_imagehash('frame.jpg')
-
-    candidates = {}
-
-    for mid in hashes:
-        dist = phash.hamming_distance(ihash,hashes[mid])
-        if (dist > threshold):
-            continue # Ignore large values
-        candidates[mid] = dist
-
-    minv = min(candidates.iteritems(), key=operator.itemgetter(1))[0]
-    finalists = {}
-    for mid in candidates:
-        if candidates[mid] == candidates[minv]:
-            finalists[mid] = candidates[mid]
-
-    if (len(finalists) <= 1):
-        multiverseID, distance = finalists.popitem()
-    else:
-        digests = {}
-        for mid in finalists:
-            fname = 'img/' + str(mid) + '.jpg'
-            idigest = phash.image_digest('frame.jpg')
-            idigest2 = phash.image_digest(fname)
-            digests[mid] = phash.cross_correlation(idigest, idigest2)
-            
-        minv = min(digests.iteritems(), key=operator.itemgetter(1))[0]
-        tiebreaker = {}
-        for mid in digests:
-            if digests[mid] == digests[minv]:
-                tiebreaker[mid] = digests[mid]
-
-        if (len(tiebreaker) <= 1):
-            multiverseID, distance = tiebreaker.popitem()
-        else:
-            multiverseID = -1
-            distance = -1
-    
-    print multiverseID, distance
-
-def autocrop(img):
-    debug = img.copy()
-    width, height, channels = img.shape;
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    ret,thresh = cv2.threshold(gray,127,255,0)
-    contours,hierarchy = cv2.findContours(thresh, 1, 2)
-    cv2.drawContours(debug, contours, -1, (0,255,0), 3)
-    maxArea = 0
-    imgArea = width * height
-    x,y,w,h = [0,0,width,height]
-    for cnt in contours:
-        x0,y0,w0,h0 = cv2.boundingRect(cnt)
-        area = w0*h0
-        if (area > maxArea and area < imgArea / 2):
-            maxArea = area
-            x,y,w,h = x0,y0,w0,h0
-
-    return (img[y:y+h, x:x+w], debug)
