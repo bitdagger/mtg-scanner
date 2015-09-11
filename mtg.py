@@ -23,7 +23,7 @@ class MTG_Scanner:
     DESCRIPTION HERE
     """
 
-    SOURCE = -1 # Which source should we use? -1 => sample.jpg, [0) => camera
+    SOURCE = 0 # Which source should we use? -1 => sample.jpg, [0) => camera
 
     def __init__(self):
         self.running = True             # Keep getting frames and processing until this is False
@@ -62,8 +62,6 @@ class MTG_Scanner:
                     frame = self.fitFrame(frame)
                 except MTGException as msg:
                     print 'Error: ' + str(msg)
-                    self.running = False
-                    break
 
             cv2.imshow('Preview', frame)
 
@@ -184,15 +182,22 @@ class MTG_Scanner:
 
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         edges = cv2.Canny(gray, 100, 300)
-        lines = cv2.HoughLines(edges, 1, np.pi/180, 120)
+
+        # Assemble debugging frames
+        #self.debugFrames.append(['Greyscale', gray.copy()])
+        self.debugFrames.append(['Edges', edges.copy()])
+
+        lines = cv2.HoughLines(edges, 1, np.pi/360, 120)
         if (lines is None):
             raise MTGException('Missing framing lines')
 
         # Assemble debugging frame
+        """
         debugFrame = frame.copy()
         for rho,theta in lines[0]:
-            self.drawLine(debugFrame, rho, theta, (0,0,255))
+            self.drawLine(debugFrame, rho, theta, (255,0,0))
         self.debugFrames.append(['Lines', debugFrame])
+        """
 
         # Find all the horizontal and vertical lines
         vert_lines = []
@@ -203,46 +208,61 @@ class MTG_Scanner:
             #THIS IS SO DUMB, ASK MORNING JEFFREY TO FIX IT
             if ( (dtheta%180 < ang_threshold) or 
                  (abs(dtheta%180-180) < ang_threshold) ):
-                horz_lines.append([rho,theta])
+                vert_lines.append([rho,theta])
             elif ( ((dtheta-90)%180 < ang_threshold) or
                    (abs((dtheta-90)%180-180) < ang_threshold) ):
-                vert_lines.append([rho,theta])
+                horz_lines.append([rho,theta])
+
+        # Assemble debugging frame
+        """
+        debugFrame = frame.copy()
+        for rho,theta in vert_lines:
+            self.drawLine(debugFrame, rho, theta, (0,0,255))
+        for rho,theta in horz_lines:
+            self.drawLine(debugFrame, rho, theta, (0,255,0))
+        self.debugFrames.append(['Ortho Lines', debugFrame])
+        """
 
         # Find the min and max horizontal and vertical lines
-        min_horz, max_horz = [None, None], [None, None]
-        min_vert, max_vert = [None, None], [None, None]
-        for rho,theta in vert_lines:
-            if (min_horz[0] is None or min_horz[0] > rho):
-                min_horz[0] = rho
-            if (min_horz[1] is None or min_horz[1] > theta):
-                min_horz[1] = theta
-            if (max_horz[0] is None or max_horz[0] < rho):
-                max_horz[0] = rho
-            if (max_horz[1] is None or max_horz[1] < theta):
-                max_horz[1] = theta
+        min_horz, max_horz = None, None
+        min_vert, max_vert = None, None
+        
         for rho,theta in horz_lines:
-            if (min_vert[0] is None or min_vert[0] > rho):
-                min_vert[0] = rho
-            if (min_vert[1] is None or min_vert[1] > theta):
-                min_vert[1] = theta
-            if (max_vert[0] is None or max_vert[0] < rho):
-                max_vert[0] = rho
-            if (max_vert[1] is None or max_vert[1] < theta):
-                max_vert[1] = theta
+            if (min_horz is None or rho < min_horz[0]):
+                min_horz = (rho, theta)
+            elif (rho == min_horz[0] and theta < min_horz[1]):
+                min_horz = (rho, theta)
 
-        if ((min_horz[0] is None or min_horz[1] is None) or
-            (max_horz[0] is None or max_horz[1] is None) or
-            (min_vert[0] is None or min_vert[1] is None) or
-            (max_vert[0] is None or max_vert[1] is None)):
+            if (max_horz is None or rho > max_horz[0]):
+                max_horz = (rho, theta)
+            elif (rho == max_horz[0] and theta < max_horz[1]):
+                max_horz = (rho, theta)
+        
+        for rho,theta in vert_lines:
+            if (min_vert is None or rho < min_vert[0]):
+                min_vert = (rho, theta)
+            elif (rho == min_vert[0] and theta < min_vert[1]):
+                min_vert = (rho, theta)
+
+            if (max_vert is None or rho > max_vert[0]):
+                max_vert = (rho, theta)
+            elif (rho == max_vert[0] and theta < max_vert[1]):
+                max_vert = (rho, theta)
+
+        if ((min_horz is None or max_horz is None) or
+            (min_vert is None or max_vert is None)):
             raise MTGException('Missing framing lines')
 
         # Assemble debugging frame
+        """
         debugFrame = frame.copy()
         self.drawLine(debugFrame, min_horz[0], min_horz[1], (0,255,0))
         self.drawLine(debugFrame, max_horz[0], max_horz[1], (0,255,0))
         self.drawLine(debugFrame, min_vert[0], min_vert[1], (0,0,255))
         self.drawLine(debugFrame, max_vert[0], max_vert[1], (0,0,255))
         self.debugFrames.append(['Framing', debugFrame])
+        """
+
 
         return (min_horz, max_horz, min_vert, max_vert)
 
