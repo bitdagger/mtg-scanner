@@ -106,7 +106,7 @@ class MTG_Scanner:
         with open('hashes.json') as data_file:
             hashes = json.load(data_file)
 
-        ham_threshold = 10 # TODO - move this to a global option
+        ham_threshold = 15 # TODO - move this to a global option
         for multiverseID in hashes:
             hamd = phash.hamming_distance(ihash, hashes[multiverseID])
             if (hamd <= ham_threshold):
@@ -135,19 +135,19 @@ class MTG_Scanner:
 
         # Calculate the corner points
         points = [
-            self.lineIntersect(min_horz[0], min_horz[1], min_vert[0], min_vert[1]), # Lower left
-            self.lineIntersect(min_horz[0], min_horz[1], max_vert[0], max_vert[1]), # Lower right
-            self.lineIntersect(max_horz[0], max_horz[1], min_vert[0], min_vert[1]), # Upper left
-            self.lineIntersect(max_horz[0], max_horz[1], max_vert[0], max_vert[1]), # Upper right
+            self.lineIntersect(min_horz[0], min_horz[1], min_vert[0], min_vert[1]), # Upper left
+            self.lineIntersect(min_horz[0], min_horz[1], max_vert[0], max_vert[1]), # Upper right
+            self.lineIntersect(max_horz[0], max_horz[1], min_vert[0], min_vert[1]), # Lower left
+            self.lineIntersect(max_horz[0], max_horz[1], max_vert[0], max_vert[1]), # Lower right
         ]
-        (bl, br, tl, tr) = points
+        (tl, tr, bl, br) = points
 
         # Assemble debugging frame
         debugFrame = frame.copy()
-        cv2.circle(debugFrame, bl, 10, (0, 0, 255), -1)
-        cv2.circle(debugFrame, br, 10, (0, 0, 255), -1)
+        cv2.circle(debugFrame, bl, 10, (255, 0, 0), -1)
+        cv2.circle(debugFrame, br, 10, (0, 255, 0), -1)
         cv2.circle(debugFrame, tl, 10, (0, 0, 255), -1)
-        cv2.circle(debugFrame, tr, 10, (0, 0, 255), -1)
+        cv2.circle(debugFrame, tr, 10, (0, 255, 255), -1)
         self.debugFrames.append(['Corners', debugFrame])
 
         # Find the max width and height
@@ -161,13 +161,13 @@ class MTG_Scanner:
 
         # Define our rectangles
         dst = np.array([
-            [maxWidth - 1, 0],
             [0, 0],
-            [maxWidth - 1, maxHeight - 1],
+            [maxWidth - 1, 0],
             [0, maxHeight -1],
+            [maxWidth - 1, maxHeight - 1],
         ], dtype = "float32")
 
-        src = np.array([bl, br, tl, tr], dtype = "float32")
+        src = np.array([tl, tr, bl, br], dtype = "float32")
 
         M = cv2.getPerspectiveTransform(src, dst)
         frame = cv2.warpPerspective(frame, M, (maxWidth, maxHeight))
@@ -183,21 +183,18 @@ class MTG_Scanner:
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         edges = cv2.Canny(gray, 100, 300)
 
-        # Assemble debugging frames
-        #self.debugFrames.append(['Greyscale', gray.copy()])
+        # Assemble debugging frame
         self.debugFrames.append(['Edges', edges.copy()])
 
-        lines = cv2.HoughLines(edges, 1, np.pi/360, 120)
+        lines = cv2.HoughLines(edges, 1, np.pi/360, 80)
         if (lines is None):
             raise MTGException('Missing framing lines')
 
         # Assemble debugging frame
-        """
         debugFrame = frame.copy()
         for rho,theta in lines[0]:
             self.drawLine(debugFrame, rho, theta, (255,0,0))
         self.debugFrames.append(['Lines', debugFrame])
-        """
 
         # Find all the horizontal and vertical lines
         vert_lines = []
@@ -214,39 +211,37 @@ class MTG_Scanner:
                 horz_lines.append([rho,theta])
 
         # Assemble debugging frame
-        """
         debugFrame = frame.copy()
         for rho,theta in vert_lines:
             self.drawLine(debugFrame, rho, theta, (0,0,255))
         for rho,theta in horz_lines:
             self.drawLine(debugFrame, rho, theta, (0,255,0))
         self.debugFrames.append(['Ortho Lines', debugFrame])
-        """
 
         # Find the min and max horizontal and vertical lines
         min_horz, max_horz = None, None
         min_vert, max_vert = None, None
         
         for rho,theta in horz_lines:
-            if (min_horz is None or rho < min_horz[0]):
+            if (min_horz is None or abs(rho) < abs(min_horz[0])):
                 min_horz = (rho, theta)
-            elif (rho == min_horz[0] and theta < min_horz[1]):
+            elif (rho == min_horz[0] and abs(theta) < abs(min_horz[1])):
                 min_horz = (rho, theta)
 
-            if (max_horz is None or rho > max_horz[0]):
+            if (max_horz is None or abs(rho) > abs(max_horz[0])):
                 max_horz = (rho, theta)
-            elif (rho == max_horz[0] and theta < max_horz[1]):
+            elif (rho == max_horz[0] and abs(theta) < abs(max_horz[1])):
                 max_horz = (rho, theta)
         
         for rho,theta in vert_lines:
-            if (min_vert is None or rho < min_vert[0]):
+            if (min_vert is None or abs(rho) < abs(min_vert[0])):
                 min_vert = (rho, theta)
-            elif (rho == min_vert[0] and theta < min_vert[1]):
+            elif (rho == min_vert[0] and abs(theta) < abs(min_vert[1])):
                 min_vert = (rho, theta)
 
-            if (max_vert is None or rho > max_vert[0]):
+            if (max_vert is None or abs(rho) > abs(max_vert[0])):
                 max_vert = (rho, theta)
-            elif (rho == max_vert[0] and theta < max_vert[1]):
+            elif (rho == max_vert[0] and abs(theta) < abs(max_vert[1])):
                 max_vert = (rho, theta)
 
         if ((min_horz is None or max_horz is None) or
@@ -254,14 +249,12 @@ class MTG_Scanner:
             raise MTGException('Missing framing lines')
 
         # Assemble debugging frame
-        """
         debugFrame = frame.copy()
         self.drawLine(debugFrame, min_horz[0], min_horz[1], (0,255,0))
         self.drawLine(debugFrame, max_horz[0], max_horz[1], (0,255,0))
         self.drawLine(debugFrame, min_vert[0], min_vert[1], (0,0,255))
         self.drawLine(debugFrame, max_vert[0], max_vert[1], (0,0,255))
         self.debugFrames.append(['Framing', debugFrame])
-        """
 
 
         return (min_horz, max_horz, min_vert, max_vert)
