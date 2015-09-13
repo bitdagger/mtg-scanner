@@ -18,3 +18,5 @@ $RECYCLE.BIN/
 hashes.json
 img/
 frame.jpg
+*.pyc
+reference.db
