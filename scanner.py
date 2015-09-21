@@ -13,15 +13,17 @@ from mtgexception import MTGException
 from transformer import transformer
 
 class scanner:
-    def __init__(self, source, referencedb):
+    def __init__(self, source, referencedb, storagedb):
         self.running = False            # Keep getting frames and processing until this is False
         self.frame = None               # Active processed frame
         self.bApplyTransforms = False   # Should transforms be applied to the frame
         self.threshold = 15             # Hamming distance threshold
         self.detected_card = None       # Card we have detected
         self.detected_id = None         # Multiverse ID of the card we have detected
+        self.blacklist = []             # List of cards rejected by the user for the current scan
 
         self.referencedb = referencedb
+        self.storagedb = storagedb
         self.debugger = debugger()
         self.transformer = transformer(self.debugger)
         self.captureDevice = cv2.VideoCapture(source)
@@ -50,7 +52,6 @@ class scanner:
                     height, width, __ = frame.shape
                     cv2.rectangle(frame,(0,0),(width - 1,height - 1),(255,0,0),2)
 
-
                 self.frame = frame
                 cv2.imshow('Preview', self.frame)
                 self.debugger.display()
@@ -75,16 +76,29 @@ class scanner:
         ihash = phash.dct_imagehash('frame.jpg')
         idigest = phash.image_digest('frame.jpg')
 
-        candidates = []
+        candidates = {}
         hashes = self.referencedb.get_hashes()
         for MultiverseID in hashes:
+            if (MultiverseID in self.blacklist):
+                continue
+
             hamd = phash.hamming_distance(ihash, int(hashes[MultiverseID]))
             if (hamd <= self.threshold):
-                candidates.append(MultiverseID)
+                print hamd, MultiverseID
+                candidates[MultiverseID] = hamd
+
+
+        finalists = []
+        minV = min(candidates.values())
+        for MultiverseID in candidates:
+            if (candidates[MultiverseID] == minV):
+                finalists.append(MultiverseID)
+
 
         bestMatch = None
         correlations = {}
-        for MultiverseID in candidates:
+        for MultiverseID in finalists:
+            hamd = candidates[MultiverseID]
             digest = phash.image_digest(self.referencedb.IMAGE_FILE % MultiverseID)
             corr = phash.cross_correlation(idigest, digest)
             if (bestMatch is None or corr > correlations[bestMatch]):
@@ -107,9 +121,21 @@ class scanner:
                     self.detected_id = self.detectCard()
                     self.detected_card = cv2.imread(self.referencedb.IMAGE_FILE % self.detected_id, cv2.IMREAD_UNCHANGED)
         else:
-            if (key == 10):
-                print 'ADD CARD'
+            if (key == 110): # n
+                self.blacklist.append(self.detected_id)
+                self.detected_id = self.detectCard()
+                self.detected_card = cv2.imread(self.referencedb.IMAGE_FILE % self.detected_id, cv2.IMREAD_UNCHANGED)
+            if (key == 10 or key == 121): # y or enter
+                self.blacklist = []
+                self.storagedb.add_card(self.detected_id)
+                name, code = self.referencedb.get_card_info(self.detected_id)
+                print 'Added ' + name + '[' + code + ']...'
+                self.detected_card = None
+                self.detected_id = None
+                self.bApplyTransforms = False
+                cv2.destroyWindow('Detected Card')
             elif (key == 8 or key == 27):
+                self.blacklist = []
                 self.detected_card = None
                 self.detected_id = None
                 self.bApplyTransforms = False

@@ -6,6 +6,7 @@ import sys
 import os
 
 import referencedb
+import storagedb
 import scanner
 
 class MTG_Scanner:
@@ -40,17 +41,21 @@ class MTG_Scanner:
         )
 
         self.options = parser.parse_args()
+        if (not (self.options.scan or self.options.export or self.options.update)):
+            parser.print_usage()
+            sys.exit(0)
 
         self.referencedb = referencedb.MTG_Reference_DB()
         if (self.referencedb.check_rebuild()):
             print 'Reference database requires rebuild...'
             self.options.update = True
 
-        if (not (self.options.scan or self.options.export or self.options.update)):
-            parser.print_usage()
-            sys.exit(0)
+        self.storagedb = storagedb.MTG_Storage_DB()
+        if (self.storagedb.check_rebuild()):
+            print 'Storage database requires rebuild. Rebuilding...'
+            self.storagedb.do_rebuild()
 
-        self.scanner = scanner.scanner(0, self.referencedb)
+        self.scanner = scanner.scanner(0, self.referencedb, self.storagedb)
 
         signal.signal(signal.SIGINT, self.handleSighup)
 
@@ -64,6 +69,12 @@ class MTG_Scanner:
         if (self.options.scan):
             print 'Running scanner...'
             self.scanner.run()
+
+        if (self.options.export):
+            cards = self.storagedb.get_all()
+            for card in cards:
+                cardinfo = self.referencedb.get_card_info(card[0])
+                print str(card[1]) + 'x ' + str(cardinfo[0]) + ' [' + str(cardinfo[1]) + ']'
 
 
     def handleSighup(self, signal, frame):

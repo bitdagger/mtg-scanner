@@ -20,3 +20,4 @@ img/
 frame.jpg
 *.pyc
 reference.db
+storage.db

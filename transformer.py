@@ -57,7 +57,9 @@ class transformer:
         src = np.array([tl, tr, bl, br], dtype = "float32")
         M = cv2.getPerspectiveTransform(src, dst)
 
-        return cv2.warpPerspective(frame, M, (maxWidth, maxHeight))
+        frame = cv2.warpPerspective(frame, M, (maxWidth, maxHeight))
+
+        return frame
 
 
     def __find_lines(self, frame):
@@ -65,7 +67,7 @@ class transformer:
         edges = cv2.Canny(gray, 100, 300)
         self.debugger.addFrame('Edges', edges.copy())
 
-        lines = cv2.HoughLines(edges, 1, np.pi/360, 80)
+        lines = cv2.HoughLines(edges, 1, np.pi/360, 100)
         if (lines is None):
             raise MTGException('Unable to find lines')
 
@@ -110,12 +112,12 @@ class transformer:
         for rho,theta in orth_lines[0]:
             if (min_vert is None or abs(rho) < abs(min_vert[0])):
                 min_vert = (rho, theta)
-            elif (rho == min_vert[0] and abs(theta) < abs(min_vert[1])):
+            elif (rho == min_vert[0] and abs(theta) > abs(min_vert[1])):
                 min_vert = (rho, theta)
 
             if (max_vert is None or abs(rho) > abs(max_vert[0])):
                 max_vert = (rho, theta)
-            elif (rho == max_vert[0] and abs(theta) < abs(max_vert[1])):
+            elif (rho == max_vert[0] and abs(theta) > abs(max_vert[1])):
                 max_vert = (rho, theta)
         
         for rho,theta in orth_lines[1]:

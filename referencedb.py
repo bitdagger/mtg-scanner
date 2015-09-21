@@ -161,3 +161,18 @@ class MTG_Reference_DB:
         except sqlite3.Error, e:
             print "Error %s:" % e.args[0]
             sys.exit(1)
+
+    def get_card_info(self, MultiverseID):
+        try:
+            cursor = self.connection.cursor()
+            cursor.execute("SELECT C.Name, S.Code FROM Cards C LEFT JOIN Sets S on S.ID = C.SetID WHERE C.MultiverseID = ?", (MultiverseID,))
+            r = cursor.fetchone()
+            if (r is None):
+                raise MTGException('No such card')
+            
+            return r[0], r[1]
+        except sqlite3.Error, e:
+            self.connection.rollback()
+            print "Error %s:" % e.args[0]
+            sys.exit(1)
+
