@@ -74,7 +74,10 @@ class MTG_Scanner:
             cards = self.storagedb.get_all()
             for card in cards:
                 cardinfo = self.referencedb.get_card_info(card[0])
-                print str(card[1]) + 'x ' + str(cardinfo[0]) + ' [' + str(cardinfo[1]) + ']'
+                foil = ''
+                if (card[1] == 1):
+                    foil = ' *F*'
+                print str(card[2]) + 'x ' + str(cardinfo[0].encode('utf8')) + ' [' + str(cardinfo[1]) + ']' + foil
 
 
     def handleSighup(self, signal, frame):

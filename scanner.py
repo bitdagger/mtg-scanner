@@ -17,9 +17,11 @@ class scanner:
         self.running = False            # Keep getting frames and processing until this is False
         self.frame = None               # Active processed frame
         self.bApplyTransforms = False   # Should transforms be applied to the frame
+        self.bVertFlip = True           # Option to rotate the frame if the camera is upside-down
         self.threshold = 15             # Hamming distance threshold
         self.detected_card = None       # Card we have detected
         self.detected_id = None         # Multiverse ID of the card we have detected
+        self.previous_id = None         # Multiverse ID of the previous card
         self.blacklist = []             # List of cards rejected by the user for the current scan
 
         self.referencedb = referencedb
@@ -51,6 +53,11 @@ class scanner:
                 else:
                     height, width, __ = frame.shape
                     cv2.rectangle(frame,(0,0),(width - 1,height - 1),(255,0,0),2)
+
+                if (self.bVertFlip):
+                    height, width, __ = frame.shape
+                    M = cv2.getRotationMatrix2D( (width/2,height/2), 180, 1)
+                    frame = cv2.warpAffine(frame, M, (width, height))
 
                 self.frame = frame
                 cv2.imshow('Preview', self.frame)
@@ -84,8 +91,11 @@ class scanner:
 
             hamd = phash.hamming_distance(ihash, int(hashes[MultiverseID]))
             if (hamd <= self.threshold):
-                print hamd, MultiverseID
                 candidates[MultiverseID] = hamd
+
+        if (not len(candidates)):
+            print 'No matches found'
+            return None
 
 
         finalists = []
@@ -114,22 +124,40 @@ class scanner:
                 self.bApplyTransforms = not self.bApplyTransforms
             elif (key == ord('d')):
                 self.debugger.toggle()
+            elif (key == 171):
+                self.detected_id = self.previous_id
+                if (self.detected_id is not None):
+                    self.detected_card = cv2.imread(self.referencedb.IMAGE_FILE % self.detected_id, cv2.IMREAD_UNCHANGED)
             elif (key == 10):
                 if (not self.bApplyTransforms):
                     self.bApplyTransforms = True
                 else:
                     self.detected_id = self.detectCard()
-                    self.detected_card = cv2.imread(self.referencedb.IMAGE_FILE % self.detected_id, cv2.IMREAD_UNCHANGED)
+                    if (self.detected_id is not None):
+                        self.detected_card = cv2.imread(self.referencedb.IMAGE_FILE % self.detected_id, cv2.IMREAD_UNCHANGED)
         else:
-            if (key == 110): # n
+            if (key == ord('n')):
+                cv2.destroyWindow('Detected Card')
                 self.blacklist.append(self.detected_id)
                 self.detected_id = self.detectCard()
-                self.detected_card = cv2.imread(self.referencedb.IMAGE_FILE % self.detected_id, cv2.IMREAD_UNCHANGED)
-            if (key == 10 or key == 121): # y or enter
+                if (self.detected_id is not None):
+                    self.detected_card = cv2.imread(self.referencedb.IMAGE_FILE % self.detected_id, cv2.IMREAD_UNCHANGED)
+            if (key == 10 or key == ord('y')):
                 self.blacklist = []
-                self.storagedb.add_card(self.detected_id)
+                self.storagedb.add_card(self.detected_id, 0)
                 name, code = self.referencedb.get_card_info(self.detected_id)
                 print 'Added ' + name + '[' + code + ']...'
+                self.previous_id = self.detected_id
+                self.detected_card = None
+                self.detected_id = None
+                self.bApplyTransforms = False
+                cv2.destroyWindow('Detected Card')
+            if (key == ord('f')):
+                self.blacklist = []
+                self.storagedb.add_card(self.detected_id, 1) # foil
+                name, code = self.referencedb.get_card_info(self.detected_id)
+                print 'Added foil ' + name + '[' + code + ']...'
+                self.previous_id = self.detected_id
                 self.detected_card = None
                 self.detected_id = None
                 self.bApplyTransforms = False

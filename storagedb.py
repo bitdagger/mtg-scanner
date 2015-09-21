@@ -41,23 +41,17 @@ class MTG_Storage_DB:
     def do_rebuild(self):
         try:
             cursor = self.connection.cursor()
-            cursor.execute("CREATE TABLE IF NOT EXISTS Cards (MultiverseID INTEGER NOT NULL PRIMARY KEY, Quantity INTEGER NOT NULL)")
+            cursor.execute("CREATE TABLE IF NOT EXISTS Cards (ID INTEGER NOT NULL PRIMARY KEY, MultiverseID INTEGER NOT NULL, Foil INTEGER NOT NULL)")
             self.connection.commit()
         except sqlite3.Error, e:
             self.connection.rollback()
             print "Error %s:" % e.args[0]
             sys.exit(1)
 
-    def add_card(self, MultiverseID):
+    def add_card(self, MultiverseID, foil):
         try:
             cursor = self.connection.cursor()
-            cursor.execute("SELECT Quantity FROM Cards WHERE MultiverseID = ?", (MultiverseID,))
-            r = cursor.fetchone()
-            if (r is None):
-                cursor.execute("INSERT INTO Cards (MultiverseID, Quantity) VALUES(?, ?)", (MultiverseID, str(1)))
-            else:
-                quantity = r[0]
-                print r[0]
+            cursor.execute("INSERT INTO Cards (MultiverseID, Foil) VALUES(?, ?)", (MultiverseID, foil))
             self.connection.commit()
         except sqlite3.Error, e:
             self.connection.rollback()
@@ -67,7 +61,7 @@ class MTG_Storage_DB:
     def get_all(self):
         try:
             cursor = self.connection.cursor()
-            cursor.execute("SELECT MultiverseID, Quantity FROM Cards")
+            cursor.execute("SELECT MultiverseID, Foil, COUNT(*) FROM Cards GROUP BY MultiverseID, Foil")
             r = cursor.fetchall()
             if (r is None):
                 return []
