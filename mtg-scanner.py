@@ -9,7 +9,20 @@ import referencedb
 import storagedb
 import scanner
 
+"""MTG_Scanner
+
+This module serves as the top level for the MTG Scanner program
+"""
+
+
 class MTG_Scanner:
+    """Attributes:
+        options (dict): Runtime options
+        referencedb (MTG_Reference_DB): The reference database object
+        storagedb (MTG_Storage_DB): The storage database object
+        scanner (MTG_Scanner): The scanner object
+    """
+
     def __init__(self):
         parser = argparse.ArgumentParser(
             description='MTG Scanner.',
@@ -41,7 +54,9 @@ class MTG_Scanner:
         )
 
         self.options = parser.parse_args()
-        if (not (self.options.scan or self.options.export or self.options.update)):
+        if (not (
+                self.options.scan or self.options.export or self.options.update
+                )):
             parser.print_usage()
             sys.exit(0)
 
@@ -55,11 +70,14 @@ class MTG_Scanner:
             print 'Storage database requires rebuild. Rebuilding...'
             self.storagedb.do_rebuild()
 
-        self.scanner = scanner.scanner(0, self.referencedb, self.storagedb)
+        self.scanner = scanner.MTG_Scanner(0, self.referencedb, self.storagedb)
 
         signal.signal(signal.SIGINT, self.handleSighup)
 
     def run(self):
+        """Main execution
+        """
+
         if (self.options.update):
             print 'Updating reference database...'
             self.referencedb.import_cards()
@@ -77,12 +95,16 @@ class MTG_Scanner:
                 foil = ''
                 if (card[1] == 1):
                     foil = ' *F*'
-                print str(card[2]) + 'x ' + str(cardinfo[0].encode('utf8')) + ' [' + str(cardinfo[1]) + ']' + foil
-
+                print str(card[2]) + 'x ' + \
+                    str(cardinfo[0].encode('utf8')) + \
+                    ' [' + str(cardinfo[1]) + ']' + foil
 
     def handleSighup(self, signal, frame):
+        """Handle signals
+        """
+
         sys.exit(0)
-        
+
 
 if __name__ == '__main__':
     app = MTG_Scanner()
