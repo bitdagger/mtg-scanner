@@ -151,7 +151,7 @@ class MTG_Scanner:
 
     def handleKey(self, key, frame):
         if (self.detected_card is None):
-            if (key == ord('e')):
+            if (key == 8 or key == 27):
                 self.bApplyTransforms = not self.bApplyTransforms
             elif (key == ord('d')):
                 self.debugger.toggle()
