@@ -8,6 +8,7 @@ while providing a way to keep track of my MTG collection.
 * opencv  
 * libphash  
 * phash python bindings  
+* imagemagick  
 
 ## Operation  
 

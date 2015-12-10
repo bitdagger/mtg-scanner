@@ -56,7 +56,7 @@ class MTG_Storage_DB(object):
 
         try:
             cursor = self.connection.cursor()
-            cursor.execute("DROP TABLE IF EXISTS")
+            cursor.execute("DROP TABLE IF EXISTS Cards")
             cursor.execute("""CREATE TABLE Cards (ID INTEGER NOT NULL
                             PRIMARY KEY, MultiverseID INTEGER NOT NULL,
                             Foil INTEGER NOT NULL)""")
