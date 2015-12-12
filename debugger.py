@@ -15,11 +15,11 @@ class MTG_Debugger:
         frames (list): List of active frames
     """
 
-    def __init__(self):
+    def __init__(self, available):
+        self.available = available
         self.enabled = False
         self.windows = {}
         self.frames = []
-        pass
 
     def addFrame(self, name, frame, func=None, *args):
         """Add a single frame to the debugging stack
@@ -68,4 +68,5 @@ class MTG_Debugger:
                 cv2.destroyWindow(window)
 
     def toggle(self):
-        self.enabled = not self.enabled
+        if (self.available):
+            self.enabled = not self.enabled

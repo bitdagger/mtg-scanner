@@ -53,12 +53,29 @@ class MTG_Scanner:
             action='store_true'
         )
 
+        parser.add_argument(
+            '--debug',
+            dest='debug',
+            help='Enable debugging',
+            action='store_true'
+        )
+
+        parser.add_argument(
+            '--camera',
+            dest='camera',
+            help='Camera ID',
+            default="0"
+        )
+
         self.options = parser.parse_args()
         if (not (
                 self.options.scan or self.options.export or self.options.update
                 )):
             parser.print_usage()
             sys.exit(0)
+
+        self.options.camera = int(self.options.camera)
+
 
         self.referencedb = referencedb.MTG_Reference_DB()
         if (self.referencedb.check_rebuild()):
@@ -70,7 +87,8 @@ class MTG_Scanner:
             print 'Storage database requires rebuild. Rebuilding...'
             self.storagedb.do_rebuild()
 
-        self.scanner = scanner.MTG_Scanner(0, self.referencedb, self.storagedb)
+        self.scanner = scanner.MTG_Scanner(self.options.camera, 
+            self.referencedb, self.storagedb, self.options.debug)
 
         signal.signal(signal.SIGINT, self.handleSighup)
 

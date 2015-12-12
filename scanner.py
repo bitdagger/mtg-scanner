@@ -38,7 +38,7 @@ class MTG_Scanner:
         captureDevice (cv2.VideoCapture): The camera to capture from
     """
 
-    def __init__(self, source, referencedb, storagedb):
+    def __init__(self, source, referencedb, storagedb, debug):
         self.running = False
         self.frame = None
         self.bApplyTransforms = False
@@ -51,7 +51,7 @@ class MTG_Scanner:
 
         self.referencedb = referencedb
         self.storagedb = storagedb
-        self.debugger = MTG_Debugger()
+        self.debugger = MTG_Debugger(debug)
         self.transformer = MTG_Transformer(self.debugger)
         self.captureDevice = cv2.VideoCapture(source)
 
