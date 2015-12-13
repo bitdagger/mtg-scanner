@@ -96,6 +96,8 @@ class MTG_Reference_DB:
                 MultiverseID INTEGER NOT NULL PRIMARY KEY,
                 SetID INTEGER NOT NULL,
                 Name TEXT NOT NULL)""")
+            cursor.execute("DELETE FROM Sets")
+            cursor.execute("DELETE FROM Cards")
             self.connection.commit()
         except sqlite3.Error, e:
             self.connection.rollback()
@@ -189,6 +191,7 @@ class MTG_Reference_DB:
             cursor.execute("""CREATE TABLE IF NOT EXISTS Hashes
                 (MultiverseID INTEGER NOT NULL PRIMARY KEY,
                 Hash TEXT NOT NULL)""")
+            cursor.execute("DELETE FROM Hashes")
             self.connection.commit()
 
             cursor.execute("SELECT MultiverseID FROM Cards")
