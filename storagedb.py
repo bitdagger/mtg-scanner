@@ -22,7 +22,9 @@ class MTG_Storage_DB(object):
     """
     PATH = 'storage.db'
 
-    def __init__(self):
+    def __init__(self, database):
+        self.PATH = "cards/%s.db" % (database,)
+
         try:
             self.connection = sqlite3.connect(self.PATH)
         except sqlite3.Error, e:

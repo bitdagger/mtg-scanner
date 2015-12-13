@@ -67,6 +67,13 @@ class MTG_Scanner:
             default="0"
         )
 
+        parser.add_argument(
+            '--database',
+            dest='database',
+            help='Database to use',
+            default="default"
+        )
+
         self.options = parser.parse_args()
         if (not (
                 self.options.scan or self.options.export or self.options.update
@@ -76,13 +83,16 @@ class MTG_Scanner:
 
         self.options.camera = int(self.options.camera)
 
+        if (self.options.database[-3:] == '.db'):
+            self.options.database = self.options.database[:-3]
+
 
         self.referencedb = referencedb.MTG_Reference_DB()
         if (self.referencedb.check_rebuild()):
             print 'Reference database requires rebuild...'
             self.options.update = True
 
-        self.storagedb = storagedb.MTG_Storage_DB()
+        self.storagedb = storagedb.MTG_Storage_DB(self.options.database)
         if (self.storagedb.check_rebuild()):
             print 'Storage database requires rebuild. Rebuilding...'
             self.storagedb.do_rebuild()
