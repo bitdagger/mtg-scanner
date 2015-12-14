@@ -179,6 +179,17 @@ class MTG_Scanner:
                     self.detected_card = cv2.imread(
                         self.referencedb.IMAGE_FILE % self.detected_id,
                         cv2.IMREAD_UNCHANGED)
+            if (key == ord('p')):
+                self.blacklist = []
+                for i in range(0,4):
+                    self.storagedb.add_card(self.detected_id, 0)
+                name, code = self.referencedb.get_card_info(self.detected_id)
+                print 'Added 4x ' + name + '[' + code + ']...'
+                self.previous_id = self.detected_id
+                self.detected_card = None
+                self.detected_id = None
+                self.bApplyTransforms = False
+                cv2.destroyWindow('Detected Card')
             if (key == 10 or key == ord('y')):
                 self.blacklist = []
                 self.storagedb.add_card(self.detected_id, 0)
