@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 import os
 import sqlite3
 import sys
@@ -28,7 +30,7 @@ class MTG_Storage_DB(object):
         try:
             self.connection = sqlite3.connect(self.PATH)
         except sqlite3.Error, e:
-            print "Error %s:" % e.args[0]
+            print("Error %s:" % e.args[0])
             sys.exit(1)
 
     def check_rebuild(self):
@@ -47,7 +49,7 @@ class MTG_Storage_DB(object):
                 if ((u'Cards',) not in data):
                     rebuild = True
         except sqlite3.Error, e:
-            print "Error %s:" % e.args[0]
+            print("Error %s:" % e.args[0])
             sys.exit(1)
 
         return rebuild
@@ -65,7 +67,7 @@ class MTG_Storage_DB(object):
             self.connection.commit()
         except sqlite3.Error, e:
             self.connection.rollback()
-            print "Error %s:" % e.args[0]
+            print("Error %s:" % e.args[0])
             sys.exit(1)
 
     def add_card(self, MultiverseID, foil):
@@ -79,7 +81,7 @@ class MTG_Storage_DB(object):
             self.connection.commit()
         except sqlite3.Error, e:
             self.connection.rollback()
-            print "Error %s:" % e.args[0]
+            print("Error %s:" % e.args[0])
             sys.exit(1)
 
     def get_all(self):
@@ -95,5 +97,5 @@ class MTG_Storage_DB(object):
             else:
                 return r
         except sqlite3.Error, e:
-            print "Error %s:" % e.args[0]
+            print("Error %s:" % e.args[0])
             sys.exit(1)

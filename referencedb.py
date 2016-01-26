@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 import os
 import sqlite3
 import sys
@@ -36,7 +38,7 @@ class MTG_Reference_DB:
         try:
             self.connection = sqlite3.connect(self.PATH)
         except sqlite3.Error, e:
-            print "Error %s:" % e.args[0]
+            print("Error %s:" % e.args[0])
             sys.exit(1)
 
     def check_rebuild(self):
@@ -74,7 +76,7 @@ class MTG_Reference_DB:
                             if (not os.path.isfile(self.IMAGE_FILE % card[0])):
                                 rebuild = True
         except sqlite3.Error, e:
-            print "Error %s:" % e.args[0]
+            print("Error %s:" % e.args[0])
             sys.exit(1)
 
         return rebuild
@@ -83,7 +85,7 @@ class MTG_Reference_DB:
         """Import card data from MTGJSON
         """
 
-        print 'Fetching card data...'
+        print('Fetching card data...')
         data = json.load(urllib.urlopen(self.JSON_URL))
 
         try:
@@ -101,10 +103,10 @@ class MTG_Reference_DB:
             self.connection.commit()
         except sqlite3.Error, e:
             self.connection.rollback()
-            print "Error %s:" % e.args[0]
+            print("Error %s:" % e.args[0])
             sys.exit(1)
 
-        print 'Importing card data...'
+        print('Importing card data...')
         dateLimit = dt.strptime(DateLimit, "%Y-%m-%d")
         try:
             for setid in data:
@@ -150,14 +152,14 @@ class MTG_Reference_DB:
             self.connection.commit()
         except sqlite3.Error, e:
             self.connection.rollback()
-            print "Error %s:" % e.args[0]
+            print("Error %s:" % e.args[0])
             sys.exit(1)
 
     def download_images(self):
         """Download images from the gatherer
         """
 
-        print 'Downloading images...'
+        print('Downloading images...')
         try:
             cursor = self.connection.cursor()
             cursor.execute("SELECT MultiverseID FROM Cards")
@@ -178,14 +180,14 @@ class MTG_Reference_DB:
 
         except sqlite3.Error, e:
             self.connection.rollback()
-            print "Error %s:" % e.args[0]
+            print("Error %s:" % e.args[0])
             sys.exit(1)
 
     def calculate_hashes(self):
         """Calculate the hashes for all the cards
         """
 
-        print 'Calculating hashes...'
+        print('Calculating hashes...')
         try:
             cursor = self.connection.cursor()
             cursor.execute("""CREATE TABLE IF NOT EXISTS Hashes
@@ -218,7 +220,7 @@ class MTG_Reference_DB:
             self.connection.commit()
         except sqlite3.Error, e:
             self.connection.rollback()
-            print "Error %s:" % e.args[0]
+            print("Error %s:" % e.args[0])
             sys.exit(1)
 
     def get_hashes(self):
@@ -234,7 +236,7 @@ class MTG_Reference_DB:
 
             return hashes
         except sqlite3.Error, e:
-            print "Error %s:" % e.args[0]
+            print("Error %s:" % e.args[0])
             sys.exit(1)
 
     def get_card_info(self, MultiverseID):
@@ -253,5 +255,5 @@ class MTG_Reference_DB:
             return r[0], r[1]
         except sqlite3.Error, e:
             self.connection.rollback()
-            print "Error %s:" % e.args[0]
+            print("Error %s:" % e.args[0])
             sys.exit(1)

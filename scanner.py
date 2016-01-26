@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 import numpy as np
 import cv2
 import math
@@ -66,7 +68,7 @@ class MTG_Scanner:
 
                 __, frame = self.captureDevice.read()
                 if (frame is None):
-                    print 'Error: No frame read from camera'
+                    print('Error: No frame read from camera')
                     break
 
                 if (self.bApplyTransforms):
@@ -127,7 +129,7 @@ class MTG_Scanner:
                 candidates[MultiverseID] = hamd
 
         if (not len(candidates)):
-            print 'No matches found'
+            print('No matches found')
             return None
 
         finalists = []
@@ -184,7 +186,7 @@ class MTG_Scanner:
                 for i in range(0,4):
                     self.storagedb.add_card(self.detected_id, 0)
                 name, code = self.referencedb.get_card_info(self.detected_id)
-                print 'Added 4x ' + name + '[' + code + ']...'
+                print('Added 4x ' + name + '[' + code + ']...')
                 self.previous_id = self.detected_id
                 self.detected_card = None
                 self.detected_id = None
@@ -194,7 +196,7 @@ class MTG_Scanner:
                 self.blacklist = []
                 self.storagedb.add_card(self.detected_id, 0)
                 name, code = self.referencedb.get_card_info(self.detected_id)
-                print 'Added ' + name + '[' + code + ']...'
+                print('Added ' + name + '[' + code + ']...')
                 self.previous_id = self.detected_id
                 self.detected_card = None
                 self.detected_id = None
@@ -204,7 +206,7 @@ class MTG_Scanner:
                 self.blacklist = []
                 self.storagedb.add_card(self.detected_id, 1)
                 name, code = self.referencedb.get_card_info(self.detected_id)
-                print 'Added foil ' + name + '[' + code + ']...'
+                print('Added foil ' + name + '[' + code + ']...')
                 self.previous_id = self.detected_id
                 self.detected_card = None
                 self.detected_id = None

@@ -1,5 +1,7 @@
 #!/usr/bin/env python2
 
+from __future__ import print_function
+
 import argparse
 import signal
 import sys
@@ -89,12 +91,12 @@ class MTG_Scanner:
 
         self.referencedb = referencedb.MTG_Reference_DB()
         if (self.referencedb.check_rebuild()):
-            print 'Reference database requires rebuild...'
+            print('Reference database requires rebuild...')
             self.options.update = True
 
         self.storagedb = storagedb.MTG_Storage_DB(self.options.database)
         if (self.storagedb.check_rebuild()):
-            print 'Storage database requires rebuild. Rebuilding...'
+            print('Storage database requires rebuild. Rebuilding...')
             self.storagedb.do_rebuild()
 
         self.scanner = scanner.MTG_Scanner(self.options.camera, 
@@ -107,13 +109,13 @@ class MTG_Scanner:
         """
 
         if (self.options.update):
-            print 'Updating reference database...'
+            print('Updating reference database...')
             self.referencedb.import_cards()
             self.referencedb.download_images()
             self.referencedb.calculate_hashes()
 
         if (self.options.scan):
-            print 'Running scanner...'
+            print('Running scanner...')
             self.scanner.run()
 
         if (self.options.export):
@@ -123,9 +125,9 @@ class MTG_Scanner:
                 foil = ''
                 if (card[1] == 1):
                     foil = ' *F*'
-                print str(card[2]) + 'x ' + \
+                print(str(card[2]) + 'x ' + \
                     str(cardinfo[0].encode('utf8')) + \
-                    ' [' + str(cardinfo[1]) + ']' + foil
+                    ' [' + str(cardinfo[1]) + ']' + foil)
 
     def handleSighup(self, signal, frame):
         """Handle signals
