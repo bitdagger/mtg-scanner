@@ -17,8 +17,8 @@ from mtgexception import MTGException
 This module is responsible for handling all the reference data
 """
 
-
 DateLimit = "2007-07-13"  # Only use sets from 10th edition and after
+
 
 class MTG_Reference_DB:
     """Attributes:
@@ -176,7 +176,9 @@ class MTG_Reference_DB:
                     path = self.IMAGE_FILE % MultiverseID
                     if (not os.path.isfile(path)):
                         urllib.urlretrieve(self.IMAGE_URL % MultiverseID, path)
-                        os.system("convert " + path + " -background black -flatten " + path)
+                        os.system(
+                            "convert " + path +
+                            " -background black -flatten " + path)
 
         except sqlite3.Error, e:
             self.connection.rollback()

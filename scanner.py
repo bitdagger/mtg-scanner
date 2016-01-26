@@ -183,7 +183,7 @@ class MTG_Scanner:
                         cv2.IMREAD_UNCHANGED)
             if (key == ord('p')):
                 self.blacklist = []
-                for i in range(0,4):
+                for i in range(0, 4):
                     self.storagedb.add_card(self.detected_id, 0)
                 name, code = self.referencedb.get_card_info(self.detected_id)
                 print('Added 4x ' + name + '[' + code + ']...')

@@ -88,7 +88,6 @@ class MTG_Scanner:
         if (self.options.database[-3:] == '.db'):
             self.options.database = self.options.database[:-3]
 
-
         self.referencedb = referencedb.MTG_Reference_DB()
         if (self.referencedb.check_rebuild()):
             print('Reference database requires rebuild...')
@@ -99,8 +98,11 @@ class MTG_Scanner:
             print('Storage database requires rebuild. Rebuilding...')
             self.storagedb.do_rebuild()
 
-        self.scanner = scanner.MTG_Scanner(self.options.camera, 
-            self.referencedb, self.storagedb, self.options.debug)
+        self.scanner = scanner.MTG_Scanner(
+            self.options.camera,
+            self.referencedb,
+            self.storagedb,
+            self.options.debug)
 
         signal.signal(signal.SIGINT, self.handleSighup)
 
@@ -125,8 +127,9 @@ class MTG_Scanner:
                 foil = ''
                 if (card[1] == 1):
                     foil = ' *F*'
-                print(str(card[2]) + 'x ' + \
-                    str(cardinfo[0].encode('utf8')) + \
+                print(
+                    str(card[2]) + 'x ' +
+                    str(cardinfo[0].encode('utf8')) +
                     ' [' + str(cardinfo[1]) + ']' + foil)
 
     def handleSighup(self, signal, frame):
