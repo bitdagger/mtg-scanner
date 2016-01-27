@@ -1,0 +1,4 @@
+cv2>=1.0
+numpy>=1.10.4
+phash>=0.2.0
+progressbar>=2.3

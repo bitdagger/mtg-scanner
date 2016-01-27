@@ -138,7 +138,9 @@ class MTG_Scanner:
 
         sys.exit(0)
 
-
-if __name__ == '__main__':
+def run():
     app = MTG_Scanner()
     app.run()
+
+if __name__ == '__main__':
+    run()
