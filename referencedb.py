@@ -17,7 +17,7 @@ from mtgexception import MTGException
 This module is responsible for handling all the reference data
 """
 
-DateLimit = "2007-07-13"  # Only use sets from 10th edition and after
+DateLimit = "2003-10-02"  # Only use sets from Mirrodin and after (Modern legal)
 
 
 class MTG_Reference_DB:
