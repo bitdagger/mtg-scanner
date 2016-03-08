@@ -10,6 +10,7 @@ import os
 import referencedb
 import storagedb
 import scanner
+from mtgexception import MTGException
 
 """MTG_Scanner
 
@@ -123,14 +124,17 @@ class MTG_Scanner:
         if (self.options.export):
             cards = self.storagedb.get_all()
             for card in cards:
-                cardinfo = self.referencedb.get_card_info(card[0])
-                foil = ''
-                if (card[1] == 1):
-                    foil = ' *F*'
-                print(
-                    str(card[2]) + 'x ' +
-                    str(cardinfo[0].encode('utf8')) +
-                    ' [' + str(cardinfo[1]) + ']' + foil)
+                try:
+                    cardinfo = self.referencedb.get_card_info(card[0])
+                    foil = ''
+                    if (card[1] == 1):
+                        foil = ' *F*'
+                    print(
+                        str(card[2]) + 'x ' +
+                        str(cardinfo[0].encode('utf8')) +
+                        ' [' + str(cardinfo[1]) + ']' + foil)
+                except MTGException:
+                    print('Error looking up card: ' + str(card[0]), file=sys.stderr)
 
     def handleSighup(self, signal, frame):
         """Handle signals
